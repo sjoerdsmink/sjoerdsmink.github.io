@@ -19,7 +19,20 @@
     
     <style>
     	.panel-title {
-	    	font-size: 100px;
+	    	font-size: 75px;
+    	}
+    	
+    	.forgotBlock {
+	    	margin-top: 10px;
+	    	margin-bottom: 0px;
+    	}
+    	
+    	.panel-body {
+	    	display: none;
+    	}
+    	
+    	.panel-heading {
+	    	cursor: pointer;
     	}
     </style>
 </head>
@@ -36,11 +49,11 @@
     <div class="row">
         <div class="col-md-6">
             <h2>Uitgang</h2>
-            <div id="uitgangPanels"></div>
+            <div id="uitgangPanels" class="panels"></div>
         </div>
         <div class="col-md-6">
             <h2>Station</h2>
-            <div id="stationPanels"></div>
+            <div id="stationPanels" class="panels"></div>
         </div>
     </div>
 </div>
@@ -70,7 +83,7 @@
         query.greaterThan("createdAt", today.toISOString());*/
         query.find({
             success: function(results) {
-                console.log("retrieved "+ results.length +" objects from Parse");
+                console.log("retrieved "+ results.length +" objects from ClosestMeasurement");
                 
                 namesForLocation = {};
                 // Do something with the returned Parse.Object values
@@ -80,6 +93,8 @@
                     //writeRow(object);
                 }
                 writeNamesInTable();
+                updateForgot();
+                enableExpandPanels();
             },
             error: function(error) {
                 alert("Error: " + error.code + " " + error.message);
@@ -120,13 +135,60 @@
                 '   </div>' +
                 '   <div class="panel-body">' +
                 '       ' + measurement.createdAt +'<br />' +
-                '		Screen: '+ measurement.get('screenStatus') +'. ' +
+                '		Screen: '+ measurement.get('screenStatus') +' - ' +
                 '		Platform: '+ measurement.get('platform') +
-                '		<br /><span class="label label-danger">Vergeten uit te checken</span>' +
                 '   </div>' +
                 '</div>';
         $("#"+ htmlBlock).append(html);
     }
+    
+    /**
+      * Set "Vergeten in/uit te checken" in panel
+      */
+    function updateForgot() {
+	    $(".forgotBlock").remove();
+	    
+	    var cicoStatusObject = Parse.Object.extend("CicoStatus");
+        // get CicoStatus for all users
+        var query = new Parse.Query(cicoStatusObject);
+        query.find({
+            success: function(results) {
+                console.log("retrieved "+ results.length +" objects from CicoStatus");
+                for (var i = 0; i < results.length; i++) {
+                    var cicoStatus = results[i];
+                    $(".panel .panel-title").each(function() {
+	                    if ($(this).text() == cicoStatus.get('user')) {
+		                    // found panel of user -> check for forgot block
+			                expectedCheckin = $(this).closest(".panels").attr("id") == "stationPanels";
+			                actualCheckin = cicoStatus.get('status') == "ingecheckt";
+			                if (expectedCheckin != actualCheckin) {
+				                // show forgot block
+				                forgotHtml = '<p class="forgotBlock"><span class="label label-danger">Vergeten ';
+				                forgotHtml += expectedCheckin ? 'in' : 'uit';
+				                forgotHtml += ' te checken</span></p>';
+				                $(this).parent().append(forgotHtml);
+			                }
+	                    }
+                    })
+                }
+            },
+            error: function(error) {
+                alert("Error in requesting CicoStatus: " + error.code + " " + error.message);
+            }
+        });
+    }
+    
+    function enableExpandPanels() {
+	    $(".panel-heading").click(function() {
+		    $(this).parent().find(".panel-body").toggle();
+	    });
+    }
+    
+    $(document).ready(function() {
+	    
+	    
+	});
+    
 </script>
 
 </body>
